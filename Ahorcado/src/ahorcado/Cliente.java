@@ -27,10 +27,19 @@ public class Cliente {
     public Cliente(){
         try{
 
+            // Objeto Scanner para la entrada del usuario
+            Scanner teclado = new Scanner(System.in);
+            
             // Crear socket y flujos de entrada/salida
             Socket sCliente = new Socket(HOST, Puerto);
             DataInputStream flujo_entrada = new DataInputStream(sCliente.getInputStream());
             DataOutputStream flujo_salida = new DataOutputStream(sCliente.getOutputStream());
+            
+            // Solicitar al cliente que introduzca la dificultad del juego
+            String leerDificultad = flujo_entrada.readUTF();
+            System.out.println(leerDificultad);
+            String dificultad = teclado.next();
+            flujo_salida.writeUTF(dificultad);
             
         }catch (Exception e) {
             // Manejar excepciones
