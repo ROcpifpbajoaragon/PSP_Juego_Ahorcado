@@ -4,6 +4,8 @@
  */
 package ahorcado;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -47,5 +49,27 @@ public class Servidor extends Thread { // extend Thread permite trabajar al serv
         }
     }
     
+    public void run(){
+        
+        try {
+            
+            // Creo los flujos de entrada y salida para comunicarme con el cliente
+            DataInputStream flujo_entrada = new DataInputStream(skCliente.getInputStream());
+            DataOutputStream flujo_salida = new DataOutputStream(skCliente.getOutputStream());
+            
+            // Solicitar al cliente que introduzca el nivel de dificultad
+            flujo_salida.writeUTF("Selecciona la dificultad(facil, medio, dificil) ");
+            String nivel = flujo_entrada.readUTF();
+            System.out.println("\tEl cliente ha dicho " + nivel);
+            
+        }catch (Exception e) {
+            
+            // Manejar excepciones
+            System.out.println(e.getMessage());
+            
+        }
+            
+        
+    }
     
 }
