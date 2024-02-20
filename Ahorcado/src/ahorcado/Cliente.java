@@ -37,9 +37,18 @@ public class Cliente {
             
             // Solicitar al cliente que introduzca la dificultad del juego
             String leerDificultad = flujo_entrada.readUTF();
-            System.out.println(leerDificultad);
+            System.out.print(leerDificultad);
             String dificultad = teclado.next();
             flujo_salida.writeUTF(dificultad);
+            
+            // Solicitar al cliente una letra tras mostrar palabra oculta 
+            String palabraOculta = flujo_entrada.readUTF();
+            System.out.println(palabraOculta);
+            String pedirLetra = flujo_entrada.readUTF();
+            System.out.print(pedirLetra);
+            String letra = teclado.next();
+            flujo_salida.writeUTF(letra);
+            
             
         }catch (Exception e) {
             // Manejar excepciones
