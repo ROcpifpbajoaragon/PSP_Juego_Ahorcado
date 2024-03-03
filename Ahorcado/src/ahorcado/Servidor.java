@@ -8,6 +8,8 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 /**
@@ -26,8 +28,11 @@ public class Servidor extends Thread { // extend Thread permite trabajar al serv
     String[] palabrasFaciles = {"TOMATE","AMIGO","PERRO","GATO","RANA","PASTA","VASO","BOLI","TELE","PATATA"};
     String[] palabrasMedias = {"CABEZAZO","JUGADORES","PROGRAMACION","ALTAVOCES","BICICLETA","COLGADOR","CARGADOR","CARRITO","MECHEROS","EXAMENES"};
     String[] palabrasDificiles = {"AYUNTAMIENTO","SUBCONTRATAR","ESCAULLIRSE","ESTABLECERSE","ZIGZAGUEABAIS","DESINCORPORAR","JAZZ","ELECTROENCEFALOGRAMA","OTORRINOLARINGOLOGO","FOTOSINTESIS"};
-    String palabraElegida, palabraOculta, letra;
+    String palabraElegida, palabraOculta;
+    List<String> letrasErroneas = new ArrayList<>();
     int intentos = 10;
+    int aciertos = 0;
+    boolean correcto = false;
     
     // Constructor que recibe el socket del cliente al que se va a atender
     public Servidor(Socket sCliente) {
@@ -69,43 +74,95 @@ public class Servidor extends Thread { // extend Thread permite trabajar al serv
             String nivel = flujo_entrada.readUTF();
             System.out.println("\tEl cliente ha dicho " + nivel);
             
-            // Seleccionamos la palabra aleatoria en funcion de la dificultad elegida por el cliente 
-            switch (nivel){
+            // En funcion de la opcion elegida por el cliente elegimos una palabra u otra
+            if(nivel.equals("facil")){
+                palabraElegida = crearPalabraAleatoria(palabrasFaciles);
+                flujo_salida.writeUTF(palabraElegida);
+            }else if(nivel.equals("medio")){
+                palabraElegida = crearPalabraAleatoria(palabrasMedias);
+                flujo_salida.writeUTF(palabraElegida);
+            }else if(nivel.equals("dificil")){
+                palabraElegida = crearPalabraAleatoria(palabrasDificiles);
+                flujo_salida.writeUTF(palabraElegida);
+            }
+            
+            // Creamos una palabra oculta en funcion de la elegida 
+            palabraOculta = crearPalabraOculta(palabraElegida);
+            
+            // Creamos un bucle que de 10 intentos al cliente 
+            for(intentos=10; intentos>=0; intentos--){
+ 
+                // Dar al cliente a elegir entre letra o palabra 
+                flujo_salida.writeUTF("Quieres probar una letra o una palabra: ");
+                String opcion = flujo_entrada.readUTF();
+                System.out.println("\tEl cliente ha dicho " + opcion);
+                flujo_salida.writeUTF("Te quedan " + intentos + " intentos");
                 
-                case "facil": 
-                    palabraElegida = crearPalabraAleatoria(palabrasFaciles);
-                    palabraOculta = crearPalabraOculta(palabraElegida);
+                if(opcion.equals("letra")){
                     
+                    // Si a elegido letra mostramos palabra oculta y pedimos letra
                     flujo_salida.writeUTF(palabraOculta);
                     flujo_salida.writeUTF("Quedan " + intentos + " intentos. Introduce una letra: ");
-                    letra = flujo_entrada.readUTF();
+                    String letra = flujo_entrada.readUTF();
                     System.out.println("\tEl cliente ha dicho " + letra);
                     
-                    break;
-                            
-                case "medio":
-                    palabraElegida = crearPalabraAleatoria(palabrasMedias);
-                    palabraOculta = crearPalabraOculta(palabraElegida);
+                    // Una vez recibimos la letra operamos para saber si esta y modificar palabra oculta
+                    palabraOculta = palabraIntermedia(palabraElegida, palabraOculta, letra, aciertos);
+                    flujo_salida.writeUTF(palabraOculta);
+                    
+                    // Si la letra completa la palabra
+                    if(palabraOculta.equals(palabraElegida)){
+                        
+                        flujo_salida.writeUTF(palabraOculta);
+                        flujo_salida.writeUTF("HAS ACERTADO LA PALABRA. FELICIDADES!");
+                        
+                    }
+                    
+                    // Si la letra no esta o esta pero no completa
+                    if(letraEsta(palabraElegida, letra)){
+                                    
+                        // Si la letra esta pero no completa palabra 
+                        flujo_salida.writeUTF("Letra encontrada");
+                        flujo_salida.writeUTF(palabraOculta);
+                        flujo_salida.writeUTF("Letras erroneas: " + letrasErroneas);
+                        intentos++;
+                        flujo_salida.writeInt(intentos);
+                                    
+                    }else{
+                                    
+                        // Si la letra no esta en la palabra 
+                        flujo_salida.writeUTF("Letra no encontrada");
+                        flujo_salida.writeUTF(palabraOculta);
+                        letrasErroneas.add(letra);
+                        flujo_salida.writeUTF("Letras erroneas: " + letrasErroneas);
+                        flujo_salida.writeInt(intentos);
+                                            
+                    }
+                    
+                }else if(opcion.equals("palabra")){
                     
                     flujo_salida.writeUTF(palabraOculta);
-                    flujo_salida.writeUTF("Quedan " + intentos + " intentos. Introduce una letra: ");
-                    letra = flujo_entrada.readUTF();
-                    System.out.println("\tEl cliente ha dicho " + letra);
+                    flujo_salida.writeUTF("Introduce la palabra: ");
+                    String palabraCliente = flujo_entrada.readUTF();
+                    palabraCliente = palabraCliente.toUpperCase();
+                    System.out.println("El cliente ha elegido: " + palabraCliente);
                     
-                    break;
-                            
-                case "dificil":
-                    palabraElegida = crearPalabraAleatoria(palabrasDificiles);
-                    palabraOculta = crearPalabraOculta(palabraElegida);
+                    // si la palabra coincide mostramos acierto sino descontamos fallo y segimos
+                    if(palabraCliente.equals(palabraElegida)){
+                                
+                        flujo_salida.writeUTF(palabraElegida);
+                        flujo_salida.writeUTF("Has acertado. FELICIDADES");
+                                
+                    }else{
+                                
+                        flujo_salida.writeUTF("Has fallado. Sigue intentandolo");
+                        flujo_salida.writeUTF(palabraOculta);
+                                
+                    }
                     
-                    flujo_salida.writeUTF(palabraOculta);
-                    flujo_salida.writeUTF("Quedan " + intentos + " intentos. Introduce una letra: ");
-                    letra = flujo_entrada.readUTF();
-                    System.out.println("\tEl cliente ha dicho " + letra);
-                    
-                    break;
+                }   
                 
-            }        
+            }
             
         }catch (Exception e) {
             
@@ -113,14 +170,12 @@ public class Servidor extends Thread { // extend Thread permite trabajar al serv
             System.out.println(e.getMessage());
             
         }
-            
-        
     }
     
     public static String crearPalabraAleatoria(String[] nivelElegido){
         
         Random r = new Random();
-        int numeroAleatorio = r.nextInt(11);
+        int numeroAleatorio = r.nextInt(10);
         
         String palabraAleatoria = nivelElegido[numeroAleatorio];
         
@@ -144,7 +199,6 @@ public class Servidor extends Thread { // extend Thread permite trabajar al serv
         
     }
     
-    // Función para convertir un array de strings en una sola palabra
     public static String convertirArrayAString(String[] array) {
         StringBuilder palabra = new StringBuilder();
         
@@ -155,4 +209,49 @@ public class Servidor extends Thread { // extend Thread permite trabajar al serv
         return palabra.toString();
     }
     
+    public static String palabraIntermedia(String palabraAleatoria, String palabraOculta, String letra, int aciertos) {
+        // Convertir la letra a un único carácter en mayúsculas (asumiendo que la letra es una cadena de un solo carácter)
+        char letraChar = letra.toUpperCase().charAt(0);
+
+        // Crear un StringBuilder para modificar la palabraOculta de manera eficiente
+        StringBuilder palabraOcultaBuilder = new StringBuilder(palabraOculta);
+
+        // Recorrer letra a letra la palabra aleatoria
+        for (int i = 0; i < palabraAleatoria.length(); i++) {
+            // Verificar si la letra actual es igual a la letra proporcionada
+            if (Character.toUpperCase(palabraAleatoria.charAt(i)) == letraChar) {
+                // Modificar esa posición en palabraOcultaBuilder
+                palabraOcultaBuilder.setCharAt(i, letraChar);
+                aciertos++;
+            }
+        }
+
+        // Convertir StringBuilder de vuelta a String
+        String palabraOcultaActualizada = palabraOcultaBuilder.toString();
+        palabraOculta = palabraOcultaActualizada;
+
+        return palabraOculta;
+    }
+ 
+    public static boolean letraEsta(String palabraAleatoria, String letra) {
+         
+        boolean fin = false;
+
+        // Convertir la letra a un único carácter en mayúsculas (asumiendo que la letra es una cadena de un solo carácter)
+        char letraChar = letra.toUpperCase().charAt(0);
+
+        // Recorrer letra a letra la palabra aleatoria
+        for (int i = 0; i < palabraAleatoria.length(); i++) {
+            // Verificar si la letra actual es igual a la letra proporcionada
+            if (Character.toUpperCase(palabraAleatoria.charAt(i)) == letraChar) {
+                fin = true;
+            }
+        }
+
+        return fin;
+    }
+    
 }
+
+
+
